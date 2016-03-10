@@ -1,14 +1,14 @@
 from setuptools import setup
 
-setup(name = "octopus",
+setup(name = "cephalopod",
     version = "0.1a",
     description = "package to manage SIMS data remotely",
-    url = "https://github.com/copperwire/octopus.git",
+    url = "https://github.com/copperwire/cephalopod.git",
     author = "Robert Solli",
     author_email = "octopus.prey@gmail.com",
     license  ="MIT",
-    packages = "octopus",
+    packages = ["cephalopod"],
     install_requires = [
            "numpy",
-           "bokeh"]
+           "bokeh"],
     zip_safe = False )
