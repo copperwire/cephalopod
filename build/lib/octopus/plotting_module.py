@@ -1,4 +1,4 @@
-from file_handler import file_handler
+from octopus import file_handler
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import host_subplot
 import mpl_toolkits.axisartist as AA

@@ -10,20 +10,38 @@ from bokeh.models import Range1d, LogAxis, LinearAxis
 import os
 import random
 import numpy as np 
-from file_handler import file_handler
+
+import tkinter
+from tkinter import filedialog
+
+from octopus import file_handler
 
 class interactive_plotting:
 
-	def __init__(self, filenames):
+	def __init__(self, filenames = None):
+
+		if filenames is not None:
+			self.filenames = filenames
+		else: 
+			print("""If you want to pass  files directly do it by interactive_plotting(filenames = list) """)
+			root = tkinter.Tk()
+			files = filedialog.askopenfilenames(parent=root,title='Choose files')
+			files = root.tk.splitlist(files)
+			self.filenames = files
 
 		self.generation = False
-		self.filenames = filenames
 
 		if not isinstance(self.filenames, (list, np.ndarray, tuple, set)):
 			self.filenames = [self.filenames]
 
 		if not self.filenames:
-			raise TypeError("Filnames can't be an empty list")
+			raise TypeError("Filnames can't be an empty list or object of type %g") %type(self.filenames)
+
+		self.tentacle()
+
+	def tentacle(self):
+		self.data_generation()
+		self.plotting()
 
 
 	def data_generation (self):
