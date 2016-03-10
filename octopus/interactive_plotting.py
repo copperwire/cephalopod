@@ -85,7 +85,9 @@ class interactive_plotting:
 
 			figure_obj = figure(plot_width = 1000, plot_height = 800, y_axis_type = "log",
 			title = attr_id, tools = TOOLS)
-
+			#figure_obj.axes.major_label_text_font_size("12pt")
+			#figure_obj.major_label_text_font_size("12pt")
+			
 			setattr(self, attr_id+"_"+"figure_obj",figure_obj)
 
 			figure_obj.yaxis.axis_label = y_axis_units[0]
@@ -143,25 +145,43 @@ class interactive_plotting:
 			"""
 
 			
-			
+			#Calculations on the dataset
 			text_input_rsf = TextInput(value = "default", title = "RSF (at/cm^3): ")
+			do_integral_button = Button(label = "Calibration Integral")
+			smoothing_button = Button(label = "Smoothing on selected curve")
+
 			text_input_sputter = TextInput(value = "default", title = "Sputter speed: float unit")
 			text_input_crater_depth = TextInput(value = "default", title = "Depth of crater in: float")
+			
+
 			radio_group.on_change("active", lambda attr, old, new: None)
 
 			text_input_xval_integral = TextInput(value = "0", title = "x-value for calibration integral ")
 			text_input_yval_integral = TextInput(value = "0", title = "y-value for calibration integral ")
 
-			do_integral_button = Button(label = "Calibration Integral")
-			save_flexDPE_button = Button(label = "Save file for FlexPDE")
+			#Save files for later use
+			save_flexDPE_button = Button(label = "Save element for FlexPDE")
+			save_all_flexDPE_button = Button(label = "Save all elements for FlexPDE")
 
-			do_integral_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group, x_box = text_input_xval_integral, y_box = text_input_yval_integral: self.integrate(identity, radio, x_box, y_box))
 
-			save_flexDPE_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group: self.write_to_flexPDE(identity, radio))
+			#Pointers to methods on click / change handlers
+			do_integral_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group, 
+										x_box = text_input_xval_integral, y_box = text_input_yval_integral: 
+										self.integrate(identity, radio, x_box, y_box))
+
+			smoothing_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group: 
+									self.smoothing(identity, radio) )
+
+			save_flexDPE_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group: 
+										self.write_to_flexPDE(identity, radio))
+
+			save_all_flexDPE_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group:
+											self.write_all_to_flexPDE(identity, radio))
 
 			text_input_rsf.on_change("value", lambda attr, old, new, radio = radio_group, 
 								identity = self.attribute_ids[i], text_input = text_input_rsf, which = "rsf":
 								self.update_data(identity, radio, text_input, new, which))
+
 
 			text_input_sputter.on_change("value", lambda attr, old, new, radio = radio_group, 
 								identity = self.attribute_ids[i], text_input = text_input_sputter, which = "sputter":
@@ -172,10 +192,10 @@ class interactive_plotting:
 								self.update_data(identity, radio, text_input, new, which))
 
 
-
+			#Initialization of actual plotting. 
 			tab_plots.append(Panel(child = hplot(figure_obj, 
-										   vform(radio_group, save_flexDPE_button), 
-										   vform(text_input_rsf, text_input_sputter, text_input_crater_depth),
+										   vform(radio_group, save_flexDPE_button, save_all_flexDPE_button), 
+										   vform(text_input_rsf, smoothing_button, text_input_sputter, text_input_crater_depth),
 										   vform(text_input_xval_integral, text_input_yval_integral, do_integral_button)),
 										   title = attr_id))
 
@@ -197,7 +217,10 @@ class interactive_plotting:
 
 			colour_list = Spectral11 + RdPu9 + Oranges9
 			colour_indices = [0, 2, 8, 10, 12, 14, 20, 22, 1, 3, 9, 11, 13, 15]
-			figure_obj = figure(plot_width = 1000, plot_height = 800, y_axis_type = "log", title = comparison_element)
+			figure_obj = figure(plot_width = 1000, plot_height = 800, y_axis_type = "log", title = comparison_element, tools = TOOLS)
+			#figure_obj.xaxis.major_label_text_font_size("12pt")
+			#figure_obj.yaxis.major_label_text_font_size("12pt")
+			
 
 			y_axis_units = []
 			x_axis_units = []
@@ -322,7 +345,7 @@ class interactive_plotting:
 		path_to_flex = path_to_direct + "/data_files/FlexPDE/"
 		write_to_filename = path_to_flex+attrname+ "_"+element+".txt"
 
-		file_object = open(write_to_filename, "w+")
+		file_object = open(write_to_filename, "w")
 
 		file_object.write("X %i \n" %len(x)) 
 		
@@ -336,9 +359,67 @@ class interactive_plotting:
 
 		file_object.close()
 
+	def write_all_to_flexPDE(self, attrname, radio):
+		for element in radio.labels:
+		
+			source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample element"]+"_source"
+
+			x = np.array(source_local.data["x"])
+			y = np.array(source_local.data["y"])
+
+			path_to_direct = os.getcwd()
+			path_to_flex = path_to_direct + "data_files/FlexPDE/"
+			write_to_filename = path_to_flex+attrname+ "_"+element+".txt"
+
+			file_object = open(write_to_filename, "w")
+
+			file_object.write("X %i \n" %len(x)) 
+			
+			for item in x: 
+				file_object.write("%1.3f " %item) 
+
+			file_object.write("\nData {u} \n")
+
+			for item in y: 
+				file_object.write("%1.1e " %item) 
+
+			file_object.close()
+
+	def smoothing(self, attrname, radio):
+		element = radio.labels[radio.active]
+
+		source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample element"]+"_source"
+
+		x = np.array(source_local.data["x"])
+		y = np.array(source_local.data["y"])
+
+		alpha = 0.8 #some number between 0 and 1, needs be adjusted
+
+		s1 = y[0]
+		ema = np.zeros(len(y))
+		ema[0] = s1
+		j = 1
+		
+		for val in y[1:]:
+			ema[j] = alpha * val + (1-alpha) * ema[j-1]
+			j += 1 
+
+		source_local.data = dict(x = x, y = ema, element = [element for i in range(len(x))])
+
+
+
+
+
+
 	def write_new_datafile(self, attrname, radio):
 		radio_group = radio
 
+
+	def estimate_RSF(self, attrname, radio):
+		ion_pot = np.loadtxt("/home/solli/Documents/octopus/RSF_estimation/ionization_potentials.txt")
+		ion_pot = np.reshape(ion_pot, (np.shape(ion_pot)[1], np.shape(ion_pot)[0]))
+
+		
 
 
 
@@ -361,7 +442,7 @@ class interactive_plotting:
 			x = x
 			y = RSF*y
 
-			source_local.data = dict(x = x, y = y, element = [name for i in range(len(np.array(u[:,number + 1])))]) 
+			source_local.data = dict(x = x, y = y, element = [element for i in range(len(x))]) 
 		
 		elif which == "sputter" or which == "crater_depth":
 			"""
@@ -394,6 +475,6 @@ class interactive_plotting:
 				y = np.array(source_local.data["y"])
 
 				x = x*sputter_speed
-				
+			
 				source_local.data = dict(x = x, y = y) 
 				figure_obj.xaxis.axis_label = "Depth " + " " + "[" + unit + "]"
