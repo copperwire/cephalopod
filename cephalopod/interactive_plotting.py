@@ -14,7 +14,7 @@ import numpy as np
 import tkinter
 from tkinter import filedialog
 
-from octopus import file_handler
+from cephalopod import file_handler
 
 class interactive_plotting:
 
@@ -26,7 +26,7 @@ class interactive_plotting:
 			print("""If you want to pass  files directly do it by interactive_plotting(filenames = list) """)
 			root = tkinter.Tk()
 			files = filedialog.askopenfilenames(parent=root,title='Choose files')
-			files = root.tk.splitlist(files)
+			root.quit()
 			self.filenames = files
 
 		self.generation = False
@@ -35,9 +35,10 @@ class interactive_plotting:
 			self.filenames = [self.filenames]
 
 		if not self.filenames:
-			raise TypeError("Filnames can't be an empty list or object of type %g") %type(self.filenames)
+			raise TypeError("Filnames can't be an empty list or empty object of type %s" %type(self.filenames)) 
 
 		self.tentacle()
+
 
 	def tentacle(self):
 		self.data_generation()
@@ -78,6 +79,9 @@ class interactive_plotting:
 
 			self.attribute_ids.append(attr_id)
 			setattr(self, attr_id, data_sets)
+
+	def version(self):
+		print("Version 0.12a0 ")
 
 	def plotting(self):
 
@@ -166,7 +170,7 @@ class interactive_plotting:
 			#Calculations on the dataset
 			text_input_rsf = TextInput(value = "default", title = "RSF (at/cm^3): ")
 			do_integral_button = Button(label = "Calibration Integral")
-			smoothing_button = Button(label = "Smoothing on selected curve")
+			smoothing_button = Button(label = "smth selct elem")
 
 			text_input_sputter = TextInput(value = "default", title = "Sputter speed: float unit")
 			text_input_crater_depth = TextInput(value = "default", title = "Depth of crater in: float")
@@ -174,8 +178,8 @@ class interactive_plotting:
 
 			radio_group.on_change("active", lambda attr, old, new: None)
 
-			text_input_xval_integral = TextInput(value = "0", title = "x-value for calibration integral ")
-			text_input_yval_integral = TextInput(value = "0", title = "y-value for calibration integral ")
+			text_input_xval_integral = TextInput(value = "0", title = "x-delimiter ")
+			text_input_yval_integral = TextInput(value = "0", title = "y-delimiter ")
 
 			#Save files for later use
 			save_flexDPE_button = Button(label = "Save element for FlexPDE")
@@ -187,8 +191,9 @@ class interactive_plotting:
 										x_box = text_input_xval_integral, y_box = text_input_yval_integral: 
 										self.integrate(identity, radio, x_box, y_box))
 
-			smoothing_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group: 
-									self.smoothing(identity, radio) )
+			smoothing_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group, 
+										x_box = text_input_xval_integral, y_box = text_input_yval_integral: 
+									self.smoothing(identity, radio, x_box, y_box) )
 
 			save_flexDPE_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group: 
 										self.write_to_flexPDE(identity, radio))
@@ -403,18 +408,32 @@ class interactive_plotting:
 
 			file_object.close()
 
-	def smoothing(self, attrname, radio):
+	def smoothing(self, attrname, radio, x_box, y_box):
 		element = radio.labels[radio.active]
+
+		lower_xdelim = float(x_box.value)
+		lower_ydelim = float(y_box.value)
 
 		source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample element"]+"_source"
 
 		x = np.array(source_local.data["x"])
 		y = np.array(source_local.data["y"])
+		
+		zero = 0
 
-		alpha = 0.8 #some number between 0 and 1, needs be adjusted
+		if lower_xdelim != 0:
+			i = 0
+			for value in x:
+				if value > lower_xdelim:
+					zero = i
+					break
+				i += 1
 
-		s1 = y[0]
-		ema = np.zeros(len(y))
+		#Maybe user should define the alpha? 
+		alpha = 0.5 #some number between 0 and 1, needs be adjusted
+
+		s1 = y[zero]
+		ema = np.zeros(len(y[zero:]))
 		ema[0] = s1
 		j = 1
 		
@@ -423,10 +442,6 @@ class interactive_plotting:
 			j += 1 
 
 		source_local.data = dict(x = x, y = ema, element = [element for i in range(len(x))])
-
-
-
-
 
 
 	def write_new_datafile(self, attrname, radio):
@@ -438,9 +453,6 @@ class interactive_plotting:
 		ion_pot = np.reshape(ion_pot, (np.shape(ion_pot)[1], np.shape(ion_pot)[0]))
 
 		
-
-
-
 	def update_data(self, attrname, radio, text_input, new, which):
 
 		if which == "rsf":
@@ -459,6 +471,10 @@ class interactive_plotting:
 
 			x = x
 			y = RSF*y
+
+
+			# DOES NOT WORK
+			text_input = TextInput(value = "%.2e" %13331, title = "RSF (at/cm^3): ")
 
 			source_local.data = dict(x = x, y = y, element = [element for i in range(len(x))]) 
 		
