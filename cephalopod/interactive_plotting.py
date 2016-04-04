@@ -61,7 +61,7 @@ class interactive_plotting:
 			x_unit = string with physical unit of data[0]
 			y_unit = string with physical unit of data[1]
 			sample info = nested list containing sample id, original filename, sample code etc.
-			sample element = name of the element measured by the SIMS process  		 
+			sample_element = name of the element measured by the SIMS process  		 
 		"""
 
 		self.generation = True
@@ -73,7 +73,7 @@ class interactive_plotting:
 			class_instance.file_iteration()
 			data_sets = class_instance.data_conversion()
 
-			name_check = data_sets[0]["DATA FILES"]
+			name_check = data_sets["gen_info"]["DATA FILES"]
 
 			attr_id = name_check[1][4][:-3] + "_" + name_check[2][2]
 
@@ -81,11 +81,9 @@ class interactive_plotting:
 			setattr(self, attr_id, data_sets)
 
 	def version(self):
-		print("Version 0.12a0 ")
+		print("Version 0.13a0 ")
 
 	def plotting(self):
-
-
 
 		#Tools = [hover, TapTool(), BoxZoomTool(), BoxSelectTool(), PreviewSaveTool(), ResetTool()]
 		TOOLS="crosshair,pan,wheel_zoom,box_zoom,reset,hover,previewsave"
@@ -101,9 +99,10 @@ class interactive_plotting:
 			"""
 			create plots for each datafile and put them in a tab.
 			"""
-			list_of_datasets = getattr(self, attr_id)
-			y_axis_units = [x["y_unit"] for x in list_of_datasets]
-			x_axis_units = [x["x_unit"] for x in list_of_datasets]
+			data_dict = getattr(self, attr_id)
+
+			y_axis_units = [x["y_unit"] for x in data_dict["data"].values()]
+			x_axis_units = [x["x_unit"] for x in data_dict["data"].values()]
 
 			figure_obj = figure(plot_width = 1000, plot_height = 800, y_axis_type = "log",
 			title = attr_id, tools = TOOLS)
@@ -116,44 +115,44 @@ class interactive_plotting:
 			figure_obj.xaxis.axis_label = x_axis_units[0]
 
 			if not all(x == y_axis_units[0] for x in y_axis_units):
-				for unit, data in zip(y_axis_units, list_of_datasets): 
+				for unit, dataset in zip(y_axis_units, data_dict["data"].values()): 
 					if not unit == y_axis_units[0]:
-						figure_obj.extra_y_ranges =  {"foo": Range1d(start = np.amin(data["data"]["y"]),
-						end = np.amax(data["data"]["y"]))}
+						figure_obj.extra_y_ranges =  {"foo": Range1d(start = np.amin(dataset["y"]),
+						end = np.amax(dataset["y"]))}
 						figure_obj.add_layout(LogAxis(y_range_name = "foo", axis_label = unit), "right")
 						break
 
 			if not all(x == x_axis_units[0] for x in x_axis_units):
-				for unit, data in zip(x_axis_units, list_of_datasets): 
+				for unit, dataset in zip(x_axis_units, data_dict["data"].values()): 
 					if not unit == x_axis_units[0]:
-						figure_obj.extra_x_ranges =  {"bar": Range1d(start = np.amin(data["data"]["x"]),
-						end = np.amax(data["data"]["x"]))}
+						figure_obj.extra_x_ranges =  {"bar": Range1d(start = np.amin(dataset["x"]),
+						end = np.amax(dataset["x"]))}
 						figure_obj.add_layout(LinearAxis(x_range_name = "bar", axis_label = unit), "above")
 						break
 
 
 
-			figure_obj.xaxis.axis_label = list_of_datasets[0]["x_unit"]
+			figure_obj.xaxis.axis_label = x_axis_units[0]
 			colour_list = Spectral11 + RdPu9 + Oranges9
 			colour_indices = [0, 2, 8, 10, 12, 14, 20, 22, 1, 3, 9, 11, 13, 15]
 
 			list_of_elements = []
 
-			for dataset, color_index in zip(list_of_datasets, colour_indices):
+			for dataset, color_index in zip(data_dict["data"].values(), colour_indices):
 
-				self.all_elements.append(dataset["sample element"]) #strip isotope number 
+				self.all_elements.append(dataset["sample_element"]) #strip isotope number 
 				color = colour_list[color_index]
 
-				source = ColumnDataSource(data = dataset["data"]) #Datastructure for source of plotting
+				source = ColumnDataSource(data = dataset) #Datastructure for source of plotting
 
-				setattr(self, attr_id+"_"+dataset["sample element"]+"_source", source) #Source element generalized for all plotting				
+				setattr(self, attr_id+"_"+dataset["sample_element"]+"_source", source) #Source element generalized for all plotting				
 
 
-				list_of_elements.append(dataset["sample element"])
+				list_of_elements.append(dataset["sample_element"])
 
-				figure_obj.line("x", "y", source = getattr(self, attr_id+"_"+dataset["sample element"]
+				figure_obj.line("x", "y", source = getattr(self, attr_id+"_"+dataset["sample_element"]
 								+"_source"), line_width = 2, line_color = color, 
-								legend = dataset["sample element"], name = dataset["sample element"],
+								legend = dataset["sample_element"], name = dataset["sample_element"],
 								 )
 
 			hover = figure_obj.select_one(HoverTool).tooltips = [("element", "@element"), ("(x,y)", "($x, $y)")]
@@ -184,6 +183,7 @@ class interactive_plotting:
 			#Save files for later use
 			save_flexDPE_button = Button(label = "Save element for FlexPDE")
 			save_all_flexDPE_button = Button(label = "Save all elements for FlexPDE")
+			save_textfile_button = Button(label = "Sava Data in textfile")
 
 
 			#Pointers to methods on click / change handlers
@@ -201,6 +201,10 @@ class interactive_plotting:
 			save_all_flexDPE_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group:
 											self.write_all_to_flexPDE(identity, radio))
 
+			save_textfile_button.on_click(lambda identity = self.attribute_ids[i], radio = radio_group:
+											self.write_new_datafile(identity, radio))
+
+
 			text_input_rsf.on_change("value", lambda attr, old, new, radio = radio_group, 
 								identity = self.attribute_ids[i], text_input = text_input_rsf, which = "rsf":
 								self.update_data(identity, radio, text_input, new, which))
@@ -217,7 +221,7 @@ class interactive_plotting:
 
 			#Initialization of actual plotting. 
 			tab_plots.append(Panel(child = hplot(figure_obj, 
-										   vform(radio_group, save_flexDPE_button, save_all_flexDPE_button), 
+										   vform(radio_group, save_flexDPE_button, save_all_flexDPE_button, save_textfile_button), 
 										   vform(text_input_rsf, smoothing_button, text_input_sputter, text_input_crater_depth),
 										   vform(text_input_xval_integral, text_input_yval_integral, do_integral_button)),
 										   title = attr_id))
@@ -253,11 +257,11 @@ class interactive_plotting:
 
 			for attr_id, color_index in zip(self.attribute_ids, colour_indices):
 
-				list_of_datasets = getattr(self, attr_id)
+				data_dict = getattr(self, attr_id)
 
-				for dataset in list_of_datasets:
+				for dataset in data_dict["data"].values():
 
-					if dataset["sample element"] == comparison_element:
+					if dataset["sample_element"] == comparison_element:
 						comparison_datasets.append(dataset)
 						y_axis_units.append(dataset["y_unit"])
 						x_axis_units.append(dataset["x_unit"])
@@ -268,27 +272,27 @@ class interactive_plotting:
 			if not all(x == y_axis_units[-1] for x in y_axis_units):
 				for unit, data in zip(y_axis_units, comparison_datasets): 
 					if not unit == y_axis_units[-1]:
-						figure_obj.extra_y_ranges =  {"foo": Range1d(start = np.amin(data["data"]["y"]),
-						end = np.amax(data["data"]["y"]))}
+						figure_obj.extra_y_ranges =  {"foo": Range1d(start = np.amin(data["y"]),
+						end = np.amax(data["y"]))}
 						figure_obj.add_layout(LogAxis(y_range_name = "foo", axis_label = unit), "right")
 						break
 
 			if not all(x == x_axis_units[-1] for x in x_axis_units):
 				for unit, data in zip(x_axis_units, comparison_datasets): 
 					if not unit == x_axis_units[-1]:
-						figure_obj.extra_x_ranges =  {"bar": Range1d(start = np.amin(data["data"]["x"]),
-						end = np.amax(data["data"]["x"]))}
+						figure_obj.extra_x_ranges =  {"bar": Range1d(start = np.amin(data["x"]),
+						end = np.amax(data["x"]))}
 						figure_obj.add_layout(LinearAxis(x_range_name = "bar", axis_label = unit), "above")
 						break
 
 
 			for attr_id, color_index in zip(self.attribute_ids, colour_indices):
 
-				list_of_datasets = getattr(self, attr_id)
+				data_dict = getattr(self, attr_id)
 
-				for dataset in list_of_datasets:
+				for dataset in data_dict["data"].values():
 
-					if dataset["sample element"] == comparison_element:
+					if dataset["sample_element"] == comparison_element:
 						color = colour_list[color_index]
 
 						"""
@@ -298,21 +302,21 @@ class interactive_plotting:
 
 							if dataset["x_unit"] != x_axis_units[-1] and dataset["y_unit"] != y_axis_units[-1]:
 
-								figure_obj.line("x", "y", source = getattr(self, attr_id+"_"+dataset["sample element"]+"_source"), line_width = 2, 
+								figure_obj.line("x", "y", source = getattr(self, attr_id+"_"+dataset["sample_element"]+"_source"), line_width = 2, 
 								line_color = color, legend = attr_id, x_range_name = "bar", y_range_name = "foo")
 
 							elif dataset["x_unit"] != x_axis_units[-1]:
 
-								figure_obj.line("x", "y", source = getattr(self, attr_id+"_"+dataset["sample element"]+"_source"), line_width = 2, 
+								figure_obj.line("x", "y", source = getattr(self, attr_id+"_"+dataset["sample_element"]+"_source"), line_width = 2, 
 								line_color = color, legend = attr_id, x_range_name = "bar")
 
 							else: 
 
-								figure_obj.line("x", "y", source = getattr(self, attr_id+"_"+dataset["sample element"]+"_source"), line_width = 2, 
+								figure_obj.line("x", "y", source = getattr(self, attr_id+"_"+dataset["sample_element"]+"_source"), line_width = 2, 
 								line_color = color, legend = attr_id, y_range_name = "foo")
 
 						else: 
-							figure_obj.line("x", "y", source = getattr(self, attr_id+"_"+dataset["sample element"]+"_source"), line_width = 2, 
+							figure_obj.line("x", "y", source = getattr(self, attr_id+"_"+dataset["sample_element"]+"_source"), line_width = 2, 
 							line_color = color, legend = attr_id)
 						
 
@@ -359,7 +363,7 @@ class interactive_plotting:
 	def write_to_flexPDE(self, attrname, radio):
 		element = radio.labels[radio.active]
 
-		source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample element"]+"_source"
+		source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample_element"]+"_source"
 
 		x = np.array(source_local.data["x"])
 		y = np.array(source_local.data["y"])
@@ -385,7 +389,7 @@ class interactive_plotting:
 	def write_all_to_flexPDE(self, attrname, radio):
 		for element in radio.labels:
 		
-			source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample element"]+"_source"
+			source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample_element"]+"_source"
 
 			x = np.array(source_local.data["x"])
 			y = np.array(source_local.data["y"])
@@ -408,13 +412,51 @@ class interactive_plotting:
 
 			file_object.close()
 
+	
+	def write_new_datafile(self, attrname, radio):
+		data_dict = getattr(self, attrname)
+		filename = "pd_"+attrname+".txt"
+		file_object = open(filename, "w")
+
+		source_local_len = getattr(self, attrname+"_"+radio.labels[radio.active]+"_source")
+		iter_over = len(np.array(source_local_len.data["y"]))
+
+		for  delim, attr in data_dict["gen_info"].items():
+			if delim == "DATA START":
+				continue	
+			file_object.write("*** "+delim+" ***")		
+			for list_obj in attr:
+				for word in list_obj:
+					file_object.write(str(word) + " ")
+				file_object.write("\n")				
+
+		file_object.write("*** DATA START ***\n")
+		
+		file_object.write(attrname[:attrname.find("_")]+"\n")
+		sequence  = []
+
+		for dataset in data_dict["data"].values():
+			sequence.append(dataset["sample_element"])
+			file_object.write("Time    %s       %s        " %(dataset["x_unit"], dataset["y_unit"])) 
+
+		for i in range(iter_over):
+
+			for place in sequence:
+				source_local = getattr(self, attrname+"_"+place+"_source")
+				x = source_local.data["x"]
+				y = source_local.data["y"]
+				if source_local.data["x_unit"] == "Time":
+					file_object.write("%1.5e            %1.5e    " %(x[i], y[i]))
+				else:
+					file_object.write("        %1.5e    %1.5e    "%(x[i], y[i])) 
+
 	def smoothing(self, attrname, radio, x_box, y_box):
 		element = radio.labels[radio.active]
 
 		lower_xdelim = float(x_box.value)
 		lower_ydelim = float(y_box.value)
 
-		source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample element"]+"_source"
+		source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample_element"]+"_source"
 
 		x = np.array(source_local.data["x"])
 		y = np.array(source_local.data["y"])
@@ -437,15 +479,13 @@ class interactive_plotting:
 		ema[0] = s1
 		j = 1
 		
-		for val in y[1:]:
+		for val in y[zero+1:]:
 			ema[j] = alpha * val + (1-alpha) * ema[j-1]
 			j += 1 
 
-		source_local.data = dict(x = x, y = ema, element = [element for i in range(len(x))])
+		adj_ema = np.append(y[:zero], ema)
 
-
-	def write_new_datafile(self, attrname, radio):
-		radio_group = radio
+		source_local.data = dict(x = x, y = adj_ema, element = [element for i in range(len(x))])
 
 
 	def estimate_RSF(self, attrname, radio):
@@ -464,17 +504,43 @@ class interactive_plotting:
 				RSF = 1.
 				#text_input.value = "ERROR: PLEASE INPUT NUMBER"
 
-			source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample element"]+"_source"
+			source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample_element"]+"_source"
 
 			x = np.array(source_local.data["x"])
 			y = np.array(source_local.data["y"])
 
-			x = x
 			y = RSF*y
-
-
+			
 			# DOES NOT WORK
 			text_input = TextInput(value = "%.2e" %13331, title = "RSF (at/cm^3): ")
+			######
+
+			data_dict = getattr(self, attrname)
+
+			for dataset in data_dict["data"].values():
+				if element in dataset["sample_element"]:
+					dataset["y_unit"] = "C[at/cm^3]"
+					next_val = False
+
+					for line in data_dict["gen_info"]["CALIBRATION PARAMETERS"]:
+						if element in line:
+							next_val = True
+							continue
+						if next_val:
+							line.append(str(RSF)) 
+	
+			"""
+			#include snippet to update axis:
+			#useless without being able to change the figure.line glyph that hosts the line for which the RSF
+			#is being calculated
+
+			figure_obj = getattr(attr_id+"_"+"figure_obj")
+
+			if len(figure_obj.yaxis) == 1:
+				figure_obj.extra_y_ranges =  {"foo": Range1d(start = np.amin(data["data"]["y"]),
+				end = np.amax(data["data"]["y"]))}
+				figure_obj.add_layout(LogAxis(y_range_name = "foo", axis_label = "C[cm^-3]"), "right")
+			"""
 
 			source_local.data = dict(x = x, y = y, element = [element for i in range(len(x))]) 
 		
@@ -483,7 +549,6 @@ class interactive_plotting:
 			Should create new axis and push to active session to replace the plot? 
 			Or simply append new x-axis? Need to identify if there exists a second x-axis allready
 			"""
-
 
 			if which == "sputter":
 				try:
@@ -494,21 +559,30 @@ class interactive_plotting:
 
 			elif which == "crater_depth":
 				try: 
-					sputter_speed, unit = new.split()
-					sputter_speed = float(sputter_speed) / x[-1]
+					crater_depth, unit = new.split()
+					sputter_speed = float(crater_depth) / x[-1]
 
 				except ValueError:
 					return
 
 			figure_obj = getattr(self, attrname+"_"+"figure_obj")
 
+			data = getattr(self, attrname)
 
-			for element in radio.labels: 
-				source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample element"]+"_source"
-				x = np.array(source_local.data["x"])
-				y = np.array(source_local.data["y"])
+			if not "No" in data["gen_info"]["ACQUISITION PARAMETERS"][5]: 
 
-				x = x*sputter_speed
-			
-				source_local.data = dict(x = x, y = y) 
-				figure_obj.xaxis.axis_label = "Depth " + " " + "[" + unit + "]"
+				data["gen_info"]["ACQUISITION PARAMETERS"][5] = "Crater Depth Measurement        Yes" 
+				if unit == "nm":
+					data["gen_info"]["ACQUISITION PARAMETERS"][6].append(str(sputter_speed * x[-1]))
+				elif unit == "um":
+					data["gen_info"]["ACQUISITION PARAMETERS"][6].append(str(sputter_speed * x[-1]*1e-3))
+				
+				for element in radio.labels: 
+					source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample_element"]+"_source"
+					x = np.array(source_local.data["x"])
+					y = np.array(source_local.data["y"])
+
+					x = x*sputter_speed
+				
+					source_local.data = dict(x = x, y = y) 
+					figure_obj.xaxis.axis_label = "Depth " + " " + "[" + unit + "]"
