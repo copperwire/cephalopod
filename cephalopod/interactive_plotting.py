@@ -415,40 +415,53 @@ class interactive_plotting:
 	
 	def write_new_datafile(self, attrname, radio):
 		data_dict = getattr(self, attrname)
-		filename = "pd_"+attrname+".txt"
+		filename = "pd_"+attrname+".dp_rpc_apc"
 		file_object = open(filename, "w")
 
 		source_local_len = getattr(self, attrname+"_"+radio.labels[radio.active]+"_source")
 		iter_over = len(np.array(source_local_len.data["y"]))
 
 		for  delim, attr in data_dict["gen_info"].items():
-			if delim == "DATA START":
+			if delim == "DATA START" or delim =="DATA END":
 				continue	
-			file_object.write("*** "+delim+" ***")		
+			file_object.write("*** "+delim+" ***")
+			file_object.write("\n")
 			for list_obj in attr:
 				for word in list_obj:
 					file_object.write(str(word) + " ")
-				file_object.write("\n")				
+				file_object.write("\n")	
+			file_object.write("\n")			
 
 		file_object.write("*** DATA START ***\n")
-		
+		file_object.write("\n")
 		file_object.write(attrname[:attrname.find("_")]+"\n")
-		sequence  = []
 
-		for dataset in data_dict["data"].values():
-			sequence.append(dataset["sample_element"])
-			file_object.write("Time    %s       %s        " %(dataset["x_unit"], dataset["y_unit"])) 
+		for element in radio.labels:
+			file_object.write("%s                                     "%element)
+		file_object.write("\n")
+
+		dataset = data_dict["data"]
+
+		for key in radio.labels:
+			file_object.write("Time    %s       %s       " %(dataset[key]["x_unit"], dataset[key]["y_unit"])) 
+
+		file_object.write("\n")
 
 		for i in range(iter_over):
 
-			for place in sequence:
+			for place in radio.labels:
 				source_local = getattr(self, attrname+"_"+place+"_source")
 				x = source_local.data["x"]
 				y = source_local.data["y"]
-				if source_local.data["x_unit"] == "Time":
-					file_object.write("%1.5e            %1.5e    " %(x[i], y[i]))
+				
+				if dataset[place]["x_unit"] == "Time":
+					file_object.write("%1.5e            %1.5e      "%(x[i], y[i]))
 				else:
-					file_object.write("        %1.5e    %1.5e    "%(x[i], y[i])) 
+					file_object.write("        %1.5e    %1.5e      "%(x[i], y[i])) 
+			
+			file_object.write("\n")
+		file_object.write("\n")
+		file_object.write("*** DATA END ***")
 
 	def smoothing(self, attrname, radio, x_box, y_box):
 		element = radio.labels[radio.active]
@@ -520,14 +533,11 @@ class interactive_plotting:
 			for dataset in data_dict["data"].values():
 				if element in dataset["sample_element"]:
 					dataset["y_unit"] = "C[at/cm^3]"
-					next_val = False
 
 					for line in data_dict["gen_info"]["CALIBRATION PARAMETERS"]:
-						if element in line:
-							next_val = True
-							continue
-						if next_val:
-							line.append(str(RSF)) 
+						if "RSF" in line:
+							line.append("%1.3e" %RSF) 
+							break
 	
 			"""
 			#include snippet to update axis:
@@ -574,9 +584,14 @@ class interactive_plotting:
 				data["gen_info"]["ACQUISITION PARAMETERS"][5] = "Crater Depth Measurement        Yes" 
 				if unit == "nm":
 					data["gen_info"]["ACQUISITION PARAMETERS"][6].append(str(sputter_speed * x[-1]))
+					for value in data["data"].values():
+						value["x_unit"] = "Depth[nm]"
+
 				elif unit == "um":
 					data["gen_info"]["ACQUISITION PARAMETERS"][6].append(str(sputter_speed * x[-1]*1e-3))
-				
+					for value in data["data"].values():
+						value["x_unit"] = "Depth[um]"
+
 				for element in radio.labels: 
 					source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample_element"]+"_source"
 					x = np.array(source_local.data["x"])
