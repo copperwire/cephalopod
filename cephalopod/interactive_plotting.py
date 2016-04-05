@@ -6,6 +6,7 @@ from bokeh.palettes import Spectral11, RdPu9, Oranges9
 from bokeh.plotting import figure, output_server, curdoc
 from bokeh.client import push_session
 from bokeh.models import Range1d, LogAxis, LinearAxis
+from .path_handler import directory_chooser
 
 import os
 import random
@@ -44,7 +45,6 @@ class interactive_plotting:
 		self.data_generation()
 		self.plotting()
 
-
 	def data_generation (self):
 		"""
 		Evaluates all files supplied to class and sets the filename and sample id as attributes containing the list 
@@ -81,7 +81,7 @@ class interactive_plotting:
 			setattr(self, attr_id, data_sets)
 
 	def version(self):
-		print("Version 0.13a0 ")
+		print("Version 0.14a1 ")
 
 	def plotting(self):
 
@@ -368,11 +368,10 @@ class interactive_plotting:
 		x = np.array(source_local.data["x"])
 		y = np.array(source_local.data["y"])
 
-		path_to_direct = os.getcwd()
-		path_to_flex = path_to_direct + "/data_files/FlexPDE/"
-		write_to_filename = path_to_flex+attrname+ "_"+element+".txt"
+		path_to_flex = directory_chooser()
+		write_to_filename = path_to_flex+"/"+attrname+ "_"+element+".txt"
 
-		file_object = open(write_to_filename, "w")
+		file_object = open(write_to_filename, "w+")
 
 		file_object.write("X %i \n" %len(x)) 
 		
@@ -387,18 +386,17 @@ class interactive_plotting:
 		file_object.close()
 
 	def write_all_to_flexPDE(self, attrname, radio):
+		path_to_flex = directory_chooser()
+		
 		for element in radio.labels:
 		
 			source_local = getattr(self, attrname+"_"+element+"_source")  #attr_id+"_"+dataset["sample_element"]+"_source"
 
 			x = np.array(source_local.data["x"])
 			y = np.array(source_local.data["y"])
+			write_to_filename = path_to_flex+"/"+attrname+ "_"+element+".txt"
 
-			path_to_direct = os.getcwd()
-			path_to_flex = path_to_direct + "data_files/FlexPDE/"
-			write_to_filename = path_to_flex+attrname+ "_"+element+".txt"
-
-			file_object = open(write_to_filename, "w")
+			file_object = open(write_to_filename, "w+")
 
 			file_object.write("X %i \n" %len(x)) 
 			
@@ -415,8 +413,9 @@ class interactive_plotting:
 	
 	def write_new_datafile(self, attrname, radio):
 		data_dict = getattr(self, attrname)
-		filename = "pd_"+attrname+".dp_rpc_apc"
-		file_object = open(filename, "w")
+		direct = directory_chooser()
+		filename = direct+"/"+"pd_"+attrname+".dp_rpc_apc"
+		file_object = open(filename, "w+")
 
 		source_local_len = getattr(self, attrname+"_"+radio.labels[radio.active]+"_source")
 		iter_over = len(np.array(source_local_len.data["y"]))
@@ -462,6 +461,7 @@ class interactive_plotting:
 			file_object.write("\n")
 		file_object.write("\n")
 		file_object.write("*** DATA END ***")
+		file_object.close()
 
 	def smoothing(self, attrname, radio, x_box, y_box):
 		element = radio.labels[radio.active]
