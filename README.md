@@ -33,14 +33,17 @@ ip()
 
 **GUI**
 
--FlexPDE
-  -Either save one or all elements as FlexPDE friendly files in a supplied folder
--RSF
-  -Provide a number corresponding to a Sensitivity Factor  (SF) or a Relative Sensitivity Factor (RSF) which is applied to the signal
--Save Datafile
-  -Saves datafile in an almost identical shape to the original file in a supplied directory
--Smooth select element
-  -Calculates a  moving exponential average on the element selected. Set x-limit do change where the smoothing is applied.
+* FlexPDE
+  * Either save one or all elements as FlexPDE friendly files in a supplied folder
+
+* RSF
+  * Provide a number corresponding to a Sensitivity Factor  (SF) or a Relative Sensitivity Factor (RSF) which is applied to the signal
+
+* Save Datafile
+  * Saves datafile in an almost identical shape to the original file in a supplied directory
+
+* Smooth select element
+  * Calculates a  moving exponential average on the element selected. Set x-limit do change where the smoothing is applied.
 
 
 **In the works**
