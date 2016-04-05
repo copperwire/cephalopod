@@ -2,7 +2,7 @@
 Package for treating sims data remotely. 
 
 
-The package is installed by `pip install` cephalopod or from conda by `conda install -c https://conda.anaconda.org/copperwire cephalopod`
+The package is installed by `pip install cephalopod` or from conda by `conda install -c https://conda.anaconda.org/copperwire cephalopod`
 
 Use of the module is done either by grabbing raw data from `file_handler` as such:
 
@@ -24,6 +24,8 @@ attribute--|
 Where quoted strings are pre-set keys and all other keys are defined iteratively and is available by iteration over the dictionary or inferred from the strings contained in the DELIMITER as set in the function (see docstring on `file_handler.data_conversion`). 
 
 To run the module with graphical output see below for an example:
+
+In your terminal run the command `bokeh serve` to initialize the server. Default hosted on local port 5006.
 
 ```python
 from cephalopod import interactive_plotting as ip
