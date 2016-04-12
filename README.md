@@ -2,7 +2,8 @@
 Package for treating sims data remotely. 
 
 
-The package is installed by `pip install cephalopod` or from conda by `conda install -c https://conda.anaconda.org/copperwire cephalopod`
+The package is installed by `pip install cephalopod` or from conda by `conda install -c https://conda.anaconda.org/copperwire cephalopod`.
+If cloned from git install by running the following command  in your terminal `python setup.py install`, to build in dev-mode run `pip install . -e`
 
 Use of the module is done either by grabbing raw data from `file_handler` as such:
 
