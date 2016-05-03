@@ -76,7 +76,7 @@ class file_handler:
 					a = setattr(self, attribute_name, lines[index_of_data_type + 1: ])
 
 		
-	def data_conversion(self, data_name = "DATA START", key_row= [2, 3], nonposy = True):
+	def data_conversion(self, data_name = "DATA START", key_row= [2, 3], nonposy = True, mass_spectra = False):
 		"""
 		Strictly needs to be run after the file_iteration method.
 		Formats the strings contained in the data_name attribute of the class to float.
@@ -93,7 +93,7 @@ class file_handler:
                                 
                     /->"Data"--> name -->("x", "y", "element", "x/y units")
 		attribute--|
-				    \->gen_info --> file_attribute(all general info about the sample not specific to element) 
+				    \->"gen_info" --> file_attribute(all general info about the sample not specific to element) 
 
 		"""
 		try:	
@@ -145,7 +145,7 @@ class file_handler:
 		variables_per_substance = len(x[0])/len(self.substances)
 
 		gen_info = {}
-		data = {}
+		data = []
 
 		for attribute in self.attribute_names:
 			"""
@@ -157,31 +157,55 @@ class file_handler:
 			gen_info[attribute] = value
 
 		for name, number in zip(self.substances, np.arange(0, len(x[0]), 2, dtype = int)):
-			if u[0][number] < 1e-1:
-				units.pop(number)
+
+			if len(units) != len(u[0]):
+				if u[0][number] < 1e-1:
+					units.pop(number)
+				else:
+					units.pop(number+1)
+
+			if not mass_spectra:
+				data.append({"x": np.array(u[:,number]), "y": np.array(u[:,number + 1]), 
+				"element": [name for i in range(len(np.array(u[:,number + 1])))],
+				"x_unit": units[number],
+				"y_unit": units[number + 1],
+				"sample_element": name})
 			else:
-				units.pop(number+1)
+				data.append({"x": np.array(u[:,number]), "y": np.array(u[:,number + 1]), 
+				"x_unit": units[number],
+				"y_unit": units[number + 1]})
 
-			data[name] = {"x": np.array(u[:,number]), "y": np.array(u[:,number + 1]), 
-						"element": [name for i in range(len(np.array(u[:,number + 1])))],
-						"x_unit": units[number],
-						"y_unit": units[number + 1],
-						"sample_element": name}
+		if not mass_spectra:
+			key_func = lambda data: self.isotope_number(data["sample_element"])
+			y = dict(data = sorted(data, key = key_func),
+			gen_info = gen_info)
 
-		y = dict(data = data, gen_info = gen_info)
+		else:
+			y = dict(data = data, gen_info = gen_info)
+
+		
 		setattr(self, name, y)
-
 		return y
 
 
-	def runtime(self, delim = "***", data_name = "DATA START", key_row= [2, 3]):
+	def runtime(self, delim = "***", data_name = "DATA START", key_row= [2, 3], mass_spectra = False):
 		"""
 		Runs the file iterator and data conversion and returns a touple of the names of the analyzed 
 		elements and dictionaries containing all data 
 		"""
 
+
 		self.file_iteration(delim);
-		x = self.data_conversion(data_name, key_row);
+		x = self.data_conversion(data_name, key_row, True, mass_spectra);
 		return  x
 
+	def isotope_number(self, string):
+		try:
+			is_num = int(string[:3])
+		except ValueError:
+			try:
+				is_num = int(string[:2])
+			except ValueError:
+				is_num = int(string[:1])
 
+		return is_num
