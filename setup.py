@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name = "cephalopod",
-    version = "0.1a",
+    version = "0.12a0",
     description = "package to manage SIMS data remotely",
     url = "https://github.com/copperwire/cephalopod.git",
     author = "Robert Solli",
