@@ -1,4 +1,4 @@
-from bokeh.models import HoverTool, TapTool, BoxZoomTool, BoxSelectTool, PreviewSaveTool, ResetTool
+from bokeh.models import HoverTool, TapTool, BoxZoomTool, BoxSelectTool, SaveTool, ResetTool
 from bokeh.models.widgets import Panel, Tabs, TextInput, RadioGroup, Button
 from bokeh.models.sources import ColumnDataSource
 from bokeh.io import output_file, show, vform, hplot
@@ -44,7 +44,6 @@ class interactive_plotting:
 
 		self.source_line= []
 		self.figure_data = []
-
 		self.attribute_ids = []
 		self.tentacle()
 
@@ -79,21 +78,13 @@ class interactive_plotting:
 
 	def data_generation (self, filename):
 		"""
-		Evaluates all files supplied to class and sets the filename and sample id as attributes containing the list 
-		of data sets from each file. e.g.:
+		Uses the file_handler class to process SIMS datafiles returning
+		a dictionary object 
 
-		filename = 151118h.dp
-		sample id = 600c
+		data_sets.keys() = dict_keys(["data", "gen_info"])
 
-		then the attribute "151118h_600c" exists as a variable in the class. The attribute is a list of dictionaries
-		with keys such that for each index of  the attribute:
-
-		151118h_600c[i] for i in [number of files]:
-			data = 2 x n nested list where data[0] contains all data points corresponding to the key \" x_unit \"
-			x_unit = string with physical unit of data[0]
-			y_unit = string with physical unit of data[1]
-			sample info = nested list containing sample id, original filename, sample code etc.
-			sample_element = name of the element measured by the SIMS process  		 
+		where "data" contains numerical data about the sample in a list sorted by 
+		isotope mass. "gen_info" is the set of all experimental parameter in the SIMS measurement
 		"""
 		class_instance = file_handler(filename)
 		class_instance.file_iteration()
@@ -287,11 +278,12 @@ class interactive_plotting:
 											line_list = line_list, 
 											source_line = self.source_line,
 											figure_data = self.figure_data,
+											data_dict = data_dict,
 											radio = radio_group,
 											x_box = text_input_xval_integral, 
 											dose = text_input_dose,
 											extra_y_ranges = attr_extra_y_ranges: 
-										self.integrate(source_list, line_list, source_line, figure_data, radio, x_box, dose, extra_y_ranges))
+										self.integrate(data_dict, source_list, line_list, source_line, figure_data, radio, x_box, dose, extra_y_ranges))
 
 			smoothing_button.on_click(lambda 
 										source_list = source_list,
@@ -350,8 +342,10 @@ class interactive_plotting:
 
 			#Initialization of actual plotting. 
 			tab_plots.append(Panel(child = hplot(figure_obj, 
+										   vform(
 										   vform(radio_group, save_flexDPE_button, save_all_flexDPE_button, save_textfile_button, matplot_button), 
-										   vform(text_input_rsf, smoothing_button, text_input_sputter, text_input_crater_depth),
+										   vform(text_input_rsf, smoothing_button, text_input_sputter, text_input_crater_depth)
+										   ),
 										   vform(text_input_xval_integral, text_input_dose, do_integral_button)),
 										   title = attr_id))
 
@@ -499,7 +493,7 @@ class interactive_plotting:
 		inst = plotter(sources_list)
 		inst.plot_machine()
 
-	def integrate(self, source_list, line_list, source_line, figure_data, radio, x_box, dose, extra_y_ranges):
+	def integrate(self, data_dict, source_list, line_list, source_line, figure_data, radio, x_box, dose, extra_y_ranges):
 		"""
 		Preforms a trapezoid integration over the x axis converted to cm on the selected element. 
 		The calculated integral is used to find  the SF value: SF = dose/integral in the case of 
@@ -511,13 +505,18 @@ class interactive_plotting:
 
 		for source, line in zip(source_list, line_list):
 			if source.data["sample_element"] == element:
+				print("fond soure")
 				source_local = source
 				line_obj = line
 
-		lower_xlim = float(x_box.value)
+		lower_xlim = float(x_box.value)*1e-4
 		dose = float(dose.value)
 		if dose == 0:
 			return 
+
+		"""
+		Should  take into account x-arrays that have dimension time - needs conversion to cm by sputter speed  
+		"""
 
 		x = np.array(source_local.data["x"])*1e-4
 		y = np.array(source_local.data["y"])
@@ -525,14 +524,28 @@ class interactive_plotting:
 		x_change = x[x>lower_xlim]
 		y_change = y[len(y)-len(x_change):]
 
-		integral = np.trapz(y_change, x = x_change)
-		
+		aq_param = data_dict["gen_info"]["ACQUISITION PARAMETERS"]
+
+		tau = float(aq_param[3][-1])
+		per_spec = float(aq_param[2][-1])
+		t_per_cyc = tau/(per_spec * len(data_dict["data"]))
+	
+		time = x_change * tau/x_change[-1]
+
+		time_int = np.trapz(y_change, x = time)
+
+		dx  = (x_change[-1]- x_change[0])/len(x_change)
+
+		integral = np.trapz(y_change, dx = dx)
+
 		SF = dose/(integral)
 
-		print(SF)
+		print("|Dose / int(I_i dx)  | Dose/ (sr * int(I_i dt))")
+		print(SF, dose/(time_int * x_change[-1]/tau))
 
 		####
 		#### IF TIME DO CALCULATION WITH DATA CYCLES AND SR
+		"""
 		
 		for fig_data, source_line_nest, i in zip(figure_data, source_line, range(len(figure_data))):
 			for source_line_item, j in zip(source_line_nest[0], range(len(source_line_nest))):
@@ -605,8 +618,9 @@ class interactive_plotting:
 									name = dataset["sample_element"],
 									y_range_name = "foo"
 									)
+			"""		
 
-			return
+		return
 
 	def write_to_flexPDE(self, source_list, attrname, radio):
 		"""
