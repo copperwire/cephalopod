@@ -76,7 +76,7 @@ class file_handler:
 					a = setattr(self, attribute_name, lines[index_of_data_type + 1: ])
 
 		
-	def data_conversion(self, data_name = "DATA START", key_row= [2, 3], nonposy = True, mass_spectra = False):
+	def data_conversion(self, data_name = "DATA START", key_row= [2, 3], nonposy = True, mass_spectra = False, SIMS_file = True):
 		"""
 		Strictly needs to be run after the file_iteration method.
 		Formats the strings contained in the data_name attribute of the class to float.
@@ -91,7 +91,7 @@ class file_handler:
 		returns dictionary with subdictionaries on the form:
 
                                 
-                    /->"Data"--> name -->("x", "y", "element", "x/y units")
+                    /->"Data"--> ("x", "y", "element", "x/y units")
 		attribute--|
 				    \->"gen_info" --> file_attribute(all general info about the sample not specific to element) 
 
@@ -129,14 +129,15 @@ class file_handler:
 			"""
 
 			y.append(a[0])
-			for i in range(1, len(a)):
-				if i % 2 == 1:
-					if a[i] < 1:
-						a[i] = a[i] + 1
-					else: 
+			if nonposy:
+				for i in range(1, len(a)):
+					if i % 2 == 1:
+						if a[i] < 1:
+							a[i] = a[i] + 1
+						else: 
+							a[i] = a[i]
+					else:
 						a[i] = a[i]
-				else:
-					a[i] = a[i]
 			x.append(a)
 
 		reshaping = np.shape(x)
@@ -145,7 +146,6 @@ class file_handler:
 		variables_per_substance = len(x[0])/len(self.substances)
 
 		gen_info = {}
-		data = []
 
 		for attribute in self.attribute_names:
 			"""
@@ -156,6 +156,23 @@ class file_handler:
 			value = [line.split(" ") for line in value]
 			gen_info[attribute] = value
 
+
+		if SIMS_file: 
+			data = self.SIMS_data_sort(u, x, units, mass_spectra)
+		else:
+			data = self.data_sort()
+
+		if not mass_spectra:
+			key_func = lambda data: self.isotope_number(data["sample_element"])
+			y = dict(data = sorted(data, key = key_func), gen_info = gen_info)
+
+		else:
+			y = dict(data = data, gen_info = gen_info)
+		
+		return y
+
+	def SIMS_data_sort(self, u, x, units,  mass_spectra):
+		data = []
 		for name, number in zip(self.substances, np.arange(0, len(x[0]), 2, dtype = int)):
 
 			if len(units) != len(u[0]):
@@ -175,18 +192,10 @@ class file_handler:
 				"x_unit": units[number],
 				"y_unit": units[number + 1]})
 
-		if not mass_spectra:
-			key_func = lambda data: self.isotope_number(data["sample_element"])
-			y = dict(data = sorted(data, key = key_func),
-			gen_info = gen_info)
+		return data
 
-		else:
-			y = dict(data = data, gen_info = gen_info)
-
-		
-		setattr(self, name, y)
-		return y
-
+	def data_sort(self):
+		return []
 
 	def runtime(self, delim = "***", data_name = "DATA START", key_row= [2, 3], mass_spectra = False):
 		"""
