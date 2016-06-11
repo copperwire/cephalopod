@@ -120,7 +120,13 @@ class interactive_plotting:
 		#hist = figure_obj.Histogram(source )
 		figure_obj.quad(top = "top", bottom = 0, left = "left" , right = "right", source = source)
 
-		return Panel(child = figure_obj, title = attr_id)
+		matplot_button = Button(label = "create matplotlib plot")
+
+		matplot_button.on_click(lambda source_list = source:
+							self.matplotlib_export_ms(source_list))
+
+
+		return Panel(child = hpllot(figure_obj, matplot_button), title = attr_id)
 
 	def plotting(self):
 
@@ -235,7 +241,6 @@ class interactive_plotting:
 							legend = dataset["sample_element"])
 
 				if self.debug:
-					  
 					self.debug_file.write("Create line object on figure %s  at %s \n" %(id(figure_obj), id(line_glyph)))
 					 
 
@@ -316,9 +321,10 @@ class interactive_plotting:
 												data_dict = data_dict,
 												figure = figure_obj,
 												source_list = source_list,
-												text_input = text_input_rsf, 
+												text_input = text_input_rsf,
+												line_list = line_list,
 												which = "rsf":
-												self.update_data(data_dict, source_list, figure, radio, text_input, new, which))
+												self.update_data(line_list, data_dict, source_list, figure, radio, text_input, new, which))
 
 
 			text_input_sputter.on_change("value", lambda attr, old, new, 
@@ -492,6 +498,10 @@ class interactive_plotting:
 	def matplotlib_export(self, sources_list):
 		inst = plotter(sources_list)
 		inst.plot_machine()
+
+	def matplotlib_export_ms(self, source):
+		inst = plotter(source)
+		inst.mass_plot()
 
 	def integrate(self, data_dict, source_list, line_list, source_line, figure_data, radio, x_box, dose, extra_y_ranges):
 		"""
@@ -793,17 +803,26 @@ class interactive_plotting:
 
 		#Maybe user should define the alpha? 
 		alpha = 0.5 #some number between 0 and 1, needs be adjusted
-
 		s1 = y[zero]
-		ema = np.zeros(len(y[zero:]))
-		ema[0] = s1
-		j = 1
+
+		def st(st_new, st_prev, vals):
+			cur = alpha * vals[0]  + (1-alpha) * st_prev
+			st_new = np.append(st_new, cur)
+			vals = np.delete(vals, 0)
+			if vals.size == 0:
+				return st_new 
+			else:	
+				return st(st_new, cur,  vals)
+
+		ema = st(np.array([]), np.array([s1]), y[zero + 1:])
 		
+		"""
 		for val in y[zero+1:]:
 			ema[j] = alpha * val + (1-alpha) * ema[j-1]
 			j += 1 
+		"""
 
-		adj_ema = np.append(y[:zero], ema)
+		adj_ema = np.append(y[:zero +1 ], ema)
 
 		dataset_local["y"] = adj_ema
 		source_local.data = dataset_local
@@ -814,7 +833,7 @@ class interactive_plotting:
 		ion_pot = np.reshape(ion_pot, (np.shape(ion_pot)[1], np.shape(ion_pot)[0]))
 
 		
-	def update_data(self, data_dict, source_list, figure, radio, text_input, new, which):
+	def update_data(self, line_list, data_dict, source_list, fig_obj, radio, text_input, new, which):
 		element = radio.labels[radio.active]
 
 		if which == "rsf":
@@ -824,9 +843,10 @@ class interactive_plotting:
 				RSF = 1.
 				#text_input.value = "ERROR: PLEASE INPUT NUMBER"
 
-			for source in source_list:
+			for source, line in zip (source_list, line_list):
 				if source.data["sample_element"] == element:
 					source_local = source
+					line_local = line
 
 			x = np.array(source_local.data["x"])
 			y = np.array(source_local.data["y"])
@@ -835,20 +855,7 @@ class interactive_plotting:
 			
 			# DOES NOT WORK
 			text_input = TextInput(value = "%.2e" %RSF, title = "RSF (at/cm^3): ")
-			######
-
-			"""
-			#include snippet to update axis:
-			#useless without being able to change the figure.line glyph that hosts the line for which the RSF
-			#is being calculated
-
-			figure_obj = getattr(attr_id+"_"+"figure_obj")
-
-			if len(figure_obj.yaxis) == 1:
-				figure_obj.extra_y_ranges =  {"foo": Range1d(start = np.amin(data["data"]["y"]),
-				end = np.amax(data["data"]["y"]))}
-				figure_obj.add_layout(LogAxis(y_range_name = "foo", axis_label = "C[cm^-3]"), "right")
-			"""
+			######		
 			for dataset in data_dict["data"]:
 				if element == dataset["sample_element"]:
 					dataset["y_unit"] = "C[at/cm^3]"
