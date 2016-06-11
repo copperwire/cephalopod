@@ -1,54 +1,124 @@
-from cephalopod import file_handler, file_chooser 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import host_subplot
 import mpl_toolkits.axisartist as AA
 import numpy as np
 
 class plotter:
+	colors = ["b", "g", "r", "c", "m", "y", "k"]
+
 
 	def __init__(self, sources):
 
 		self.sources = sources
+	
+	def checkEqual2(self, iterator):
+		return len(set(iterator)) <= 1
 
 	def plot_machine(self): 
-		sources = self.sources		
-
-		host = host_subplot(111, axes_class = AA.Axes)
+		sources = self.sources
+		req_ax = self.checkEqual2([source.data["y_unit"] for source in sources])
 		
-		plt.subplots_adjust(right = 0.75)
+		if  req_ax == False: 
+			fig, ax1 = plt.subplots()
+
+			ax1.set_yscale("log")
+
+			ax2 = ax1.twinx()
+			ax2.set_yscale("log")
+
+			sc1 = sources[0].data
+
+			x1 = sc1["x"]
+			y1 = sc1["y"]
+			el1 = sc1["sample_element"]
+			xun1 = sc1["x_unit"]
+			yun1 = sc1["y_unit"]
+
+			ax1.plot(x1, y1, self.colors[0]+ "x-", label = el1)		
+			ax1.set_xlabel(xun1)
+			ax1.set_ylabel(yun1)
+			
+			source_diff = None
+
+			for source, color in zip(sources[1:], self.colors[1:]):
+	
+				scn = source.data
+
+				xn = scn["x"]
+				yn = scn["y"]
+				eln = scn["sample_element"]
+				xunn = scn["x_unit"]
+				yunn = scn["y_unit"]
+
+				if yunn != yun1:
+					ax2.plot(xn, yn, color+"o-", label = eln)
+					source_diff = source
+				else:
+					ax1.plot(xn, yn, color+"x-", label = eln)
+
+			ax2.set_ylabel(source_diff.data["y_unit"])
+
+
+		else: 
+
+			sc1 = sources[0].data
+
+			fig, ax1 = plt.subplots()
+			ax1.set_yscale("log")
+
+			x1 = sc1["x"]
+			y1 = sc1["y"]
+			el1 = sc1["sample_element"]
+			xun1 = sc1["x_unit"]
+			yun1 = sc1["y_unit"]
+
+			ax1.plot(x1, y1, "b-", label = el1)		
+			ax1.set_xlabel(xun1)
+			ax1.set_ylabel(yun1)
+			
+			for source, color in zip(sources[1:], self.colors[1:]):
+	
+				scn = source.data
+
+				xn = scn["x"]
+				yn = scn["y"]
+				eln = scn["sample_element"]
+				xunn = scn["x_unit"]
+				yunn = scn["y_unit"]
+
+				ax1.plot(xn, yn, color+"-", label = eln)
+
+		plt.legend()
 		plt.xticks(fontsize = 16)
 		plt.yticks(fontsize = 16) 
+
+		plt.show()
+		
+	def mass_plot():
+		source = self.sources
+
+		host = host_subplot(111, axes_class = AA.Axes)
+		plt.subplots_adjust(right = 0.75)
+
 
 		host.set_yscale("log")
 
 		host.set_xlabel(sources[0].data["x_unit"], fontsize = 25)
-			
-		for data_set in sources:
-			x_val = data_set.data["x"]
-			y_val = data_set.data["y"]
 
-			x_unit = "$%s$" %data_set.data["x_unit"]
-			y_unit = "$%s$" %data_set.data["y_unit"]
+		plt.plot()
 
-			host.set_ylabel(y_unit, fontsize  = 25)
-			host.plot(x_val, y_val, label = data_set.data["sample_element"])
-			plt.legend()
+		x_val = source.data["x"]
+		y_val = source.data["y"]
 
-			if y_unit != sources[0].data["y_unit"]:
-				par2 = host.twinx()
-				par2.set_yscale("log")
-				par2.set_ylabel(y_unit)
+		y_unit = source.data["y_unit"]
 
-				offset = 60 
-				new_fixed_axis = par2.get_grid_helper().new_fixed_axis
-				par2.axis["right"] = new_fixed_axis(loc="right",
-				                                    axes=par2,
-				                                    offset=(offset, 0))
-				par2.axis["right"].toggle(all = True)
+		host.set_ylabel(y_unit, fontsize = 25)
+		host.plot(x_val, y_val, label = "Mass spectra", linewidth  = 2.0)
 
+		plt.xticks(fontsize = 16)
+		plt.yticks(fontsize = 16) 
 
 		plt.show()
-		
 
 		"""
 		else:
