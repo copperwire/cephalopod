@@ -32,7 +32,7 @@ class plotter:
 			y1 = sc1["y"]
 			el1 = sc1["sample_element"]
 			xun1 = sc1["x_unit"]
-			yun1 = sc1["y_unit"]
+			yun1 = r"%s" %sc1["y_unit"]
 
 			ax1.plot(x1, y1, self.colors[0]+ "x-", label = el1)		
 			ax1.set_xlabel(xun1)
@@ -57,6 +57,7 @@ class plotter:
 					ax1.plot(xn, yn, color+"x-", label = eln)
 
 			ax2.set_ylabel(source_diff.data["y_unit"])
+			ax2.legend(loc=0)
 
 
 		else: 
@@ -94,26 +95,25 @@ class plotter:
 
 		plt.show()
 		
-	def mass_plot():
-		source = self.sources
+	def mass_plot(self):
+		sources = self.sources
+
 
 		host = host_subplot(111, axes_class = AA.Axes)
 		plt.subplots_adjust(right = 0.75)
-
-
 		host.set_yscale("log")
 
-		host.set_xlabel(sources[0].data["x_unit"], fontsize = 25)
+		hist = sources.data["top"]
+		bin_edges = sources.data["edges"]
 
-		plt.plot()
+		host.set_xlabel(sources.data["x_unit"], fontsize = 25)
 
-		x_val = source.data["x"]
-		y_val = source.data["y"]
 
-		y_unit = source.data["y_unit"]
+		y_unit = sources.data["y_unit"]
 
 		host.set_ylabel(y_unit, fontsize = 25)
-		host.plot(x_val, y_val, label = "Mass spectra", linewidth  = 2.0)
+		host.bar(bin_edges[:-1], hist, width = 1)
+		host.set_xlim(min(bin_edges), max(bin_edges))
 
 		plt.xticks(fontsize = 16)
 		plt.yticks(fontsize = 16) 
