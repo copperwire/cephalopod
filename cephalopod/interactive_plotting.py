@@ -112,11 +112,16 @@ class interactive_plotting:
 		figure_obj = figure(plot_width = 1000, plot_height = 800, y_axis_type = "log",
 			title = attr_id, tools = TOOLS)
 
+		figure_obj.yaxis.axis_label = data_dict["data"][0]["y_unit"]
+		figure_obj.xaxis.axis_label = data_dict["data"][0]["x_unit"]
+
 		hover = figure_obj.select(dict(type = HoverTool))
 		hover.tooltips=[("Value:", "$top")]
 
 		hist, edges = np.histogram(data_dict["data"][0]["y"],  bins = data_dict["data"][0]["x"])
-		source = ColumnDataSource(data = dict(top = hist, left = edges[:-1], right = edges[1:]))
+		source = ColumnDataSource(data = dict(top = hist, left = edges[:-1], right = edges[1:], 
+					x_unit = data_dict["data"][0]["x_unit"], y_unit = data_dict["data"][0]["y_unit"],
+					edges = edges))
 		#hist = figure_obj.Histogram(source )
 		figure_obj.quad(top = "top", bottom = 0, left = "left" , right = "right", source = source)
 
@@ -126,7 +131,7 @@ class interactive_plotting:
 							self.matplotlib_export_ms(source_list))
 
 
-		return Panel(child = hpllot(figure_obj, matplot_button), title = attr_id)
+		return Panel(child = hplot(figure_obj, matplot_button), title = attr_id)
 
 	def plotting(self):
 
@@ -815,13 +820,6 @@ class interactive_plotting:
 				return st(st_new, cur,  vals)
 
 		ema = st(np.array([]), np.array([s1]), y[zero + 1:])
-		
-		"""
-		for val in y[zero+1:]:
-			ema[j] = alpha * val + (1-alpha) * ema[j-1]
-			j += 1 
-		"""
-
 		adj_ema = np.append(y[:zero +1 ], ema)
 
 		dataset_local["y"] = adj_ema
